@@ -2,11 +2,12 @@
  * Netlify Serverless Function: translate
  * Endpoint: /.netlify/functions/translate
  * 
- * Securely proxies translation requests to Google Cloud Translation API.
- * Never exposes API keys to client-side code.
+ * Powered by MyMemory Free Translation API (https://api.mymemory.translated.net/get)
+ * No paid API key or Google Cloud billing required.
+ * Supports auto-detection, English-Telugu, Telugu-English, and 70+ global languages.
  */
 
-// Simple HTML entity decoder for Google Translate output
+// Decode HTML entities commonly returned by machine translation engines
 function decodeHTMLEntities(text) {
   if (!text || typeof text !== 'string') return text;
   return text
@@ -18,6 +19,74 @@ function decodeHTMLEntities(text) {
     .replace(/&amp;/g, '&')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
+}
+
+// Split long text into chunks <= maxChunkSize preserving paragraph/sentence boundaries
+function splitIntoChunks(text, maxChunkSize = 450) {
+  if (!text || text.length <= maxChunkSize) {
+    return [text];
+  }
+
+  const chunks = [];
+  const paragraphs = text.split('\n');
+  let currentChunk = '';
+
+  for (const paragraph of paragraphs) {
+    if ((currentChunk + '\n' + paragraph).length <= maxChunkSize) {
+      currentChunk = currentChunk ? currentChunk + '\n' + paragraph : paragraph;
+    } else {
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = '';
+      }
+
+      if (paragraph.length <= maxChunkSize) {
+        currentChunk = paragraph;
+      } else {
+        // Split paragraph by punctuation / sentence delimiters
+        const sentenceRegex = /([.!?।؟。]+[\s]+)/;
+        const tokens = paragraph.split(sentenceRegex);
+        let sentenceChunk = '';
+
+        for (let i = 0; i < tokens.length; i++) {
+          const token = tokens[i];
+          if ((sentenceChunk + token).length <= maxChunkSize) {
+            sentenceChunk += token;
+          } else {
+            if (sentenceChunk) {
+              chunks.push(sentenceChunk);
+              sentenceChunk = '';
+            }
+            if (token.length <= maxChunkSize) {
+              sentenceChunk = token;
+            } else {
+              // Word level splitting
+              const words = token.split(' ');
+              let wordChunk = '';
+              for (const word of words) {
+                if ((wordChunk + ' ' + word).length <= maxChunkSize) {
+                  wordChunk = wordChunk ? wordChunk + ' ' + word : word;
+                } else {
+                  if (wordChunk) chunks.push(wordChunk);
+                  wordChunk = word;
+                }
+              }
+              if (wordChunk) sentenceChunk = wordChunk;
+            }
+          }
+        }
+        if (sentenceChunk) {
+          currentChunk = sentenceChunk;
+        }
+      }
+    }
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
 }
 
 const CORS_HEADERS = {
@@ -49,27 +118,7 @@ export const handler = async function(event, context) {
     };
   }
 
-  // Verify API Key presence
-  const apiKey = process.env.GOOGLE_TRANSLATION_API_KEY;
-  if (
-    !apiKey ||
-    apiKey.trim() === '' ||
-    apiKey === 'undefined' ||
-    apiKey === 'null' ||
-    apiKey === 'your_google_cloud_translation_api_key_here'
-  ) {
-    return {
-      statusCode: 500,
-      headers: CORS_HEADERS,
-      body: JSON.stringify({
-        error: 'Google Cloud Translation API key is not configured on the server.',
-        details: 'The server environment is missing a valid GOOGLE_TRANSLATION_API_KEY. Please set this variable in your Netlify dashboard under Site Settings > Environment Variables, or in a local .env file.',
-        code: 'MISSING_API_KEY'
-      })
-    };
-  }
-
-  // Parse and validate request body
+  // Parse request body
   let body;
   try {
     body = JSON.parse(event.body || '{}');
@@ -98,7 +147,7 @@ export const handler = async function(event, context) {
     };
   }
 
-  // Enforce reasonable character limit (5,000 characters)
+  // Enforce 5,000 character maximum limit
   const MAX_CHAR_LIMIT = 5000;
   if (text.length > MAX_CHAR_LIMIT) {
     return {
@@ -123,105 +172,142 @@ export const handler = async function(event, context) {
     };
   }
 
-  const cleanTargetLang = targetLang.trim().toLowerCase();
-  const cleanSourceLang = sourceLang && sourceLang.trim().toLowerCase() !== 'auto' ? sourceLang.trim().toLowerCase() : null;
+  const cleanTarget = targetLang.trim();
+  const cleanSource = sourceLang && sourceLang.trim().toLowerCase() !== 'auto'
+    ? sourceLang.trim()
+    : 'autodetect';
+
+  const langpair = `${cleanSource}|${cleanTarget}`;
+
+  // Optional email parameter to grant 50,000 words/day instead of 5,000
+  const userEmail = process.env.MYMEMORY_EMAIL || '';
 
   try {
-    // Construct Google Cloud Translation API v2 URL
-    const googleApiUrl = `https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey.trim())}`;
+    const textChunks = splitIntoChunks(text, 450);
+    const translatedChunks = [];
+    let detectedSourceLanguage = cleanSource !== 'autodetect' ? cleanSource : null;
 
-    const requestPayload = {
-      q: text,
-      target: cleanTargetLang,
-      format: 'text'
-    };
-
-    if (cleanSourceLang) {
-      requestPayload.source = cleanSourceLang;
-    }
-
-    // Call Google Cloud Translation API
-    const response = await fetch(googleApiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestPayload)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const googleError = data.error || {};
-      const errorMessage = googleError.message || 'Google Translation API request failed.';
-      const errorCode = googleError.code || response.status;
-
-      // Handle common Google Cloud API error scenarios
-      let clientMessage = errorMessage;
-      let statusCode = response.status >= 500 ? 502 : response.status;
-
-      if (errorMessage.toLowerCase().includes('api key not valid') || errorMessage.toLowerCase().includes('bad request')) {
-        clientMessage = 'The configured Google Translation API key is invalid or has expired. Please verify your credentials.';
-        statusCode = 401;
-      } else if (response.status === 429 || errorMessage.toLowerCase().includes('quota')) {
-        clientMessage = 'Google Cloud Translation API quota exceeded. Please check your billing/quotas in Google Cloud Console.';
-        statusCode = 429;
-      } else if (errorMessage.toLowerCase().includes('invalid value') || errorMessage.toLowerCase().includes('source') || errorMessage.toLowerCase().includes('target')) {
-        clientMessage = `Unsupported or invalid language code. Details: ${errorMessage}`;
-        statusCode = 400;
+    for (let i = 0; i < textChunks.length; i++) {
+      const chunk = textChunks[i];
+      if (!chunk || chunk.trim() === '') {
+        translatedChunks.push(chunk);
+        continue;
       }
 
-      return {
-        statusCode: statusCode,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({
-          error: clientMessage,
-          code: 'GOOGLE_API_ERROR',
-          upstreamStatus: errorCode,
-          details: errorMessage
-        })
-      };
+      let myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk.trim())}&langpair=${encodeURIComponent(langpair)}`;
+      if (userEmail) {
+        myMemoryUrl += `&de=${encodeURIComponent(userEmail)}`;
+      }
+
+      const response = await fetch(myMemoryUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'LinguaFlow-Translator/1.0'
+        }
+      });
+
+      if (!response.ok && response.status === 429) {
+        return {
+          statusCode: 429,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'MyMemory translation rate limit reached for today. Please try again later.',
+            code: 'RATE_LIMIT_EXCEEDED'
+          })
+        };
+      }
+
+      const data = await response.json();
+
+      // Check MyMemory internal responseStatus
+      if (data.responseStatus === 429 || (data.responseDetails && data.responseDetails.includes('DAILY LIMIT'))) {
+        return {
+          statusCode: 429,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'Daily free translation quota reached on MyMemory API. Please try again tomorrow.',
+            code: 'RATE_LIMIT_EXCEEDED',
+            details: data.responseDetails
+          })
+        };
+      }
+
+      if (data.responseStatus && data.responseStatus !== 200 && data.responseStatus !== 403) {
+        const errorMsg = data.responseDetails || 'MyMemory translation failed.';
+        return {
+          statusCode: 400,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: errorMsg,
+            code: 'TRANSLATION_ERROR',
+            details: data.responseDetails
+          })
+        };
+      }
+
+      const rawTranslation = data?.responseData?.translatedText;
+      if (rawTranslation === undefined || rawTranslation === null) {
+        return {
+          statusCode: 502,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'No translation was returned for this segment.',
+            code: 'EMPTY_TRANSLATION_RESPONSE'
+          })
+        };
+      }
+
+      // Check if MyMemory returned quota exceeded inside translatedText
+      if (typeof rawTranslation === 'string' && rawTranslation.includes('YOU USED ALL AVAILABLE FREE TRANSLATIONS')) {
+        return {
+          statusCode: 429,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'Daily free translation quota reached on MyMemory API. Please try again tomorrow.',
+            code: 'RATE_LIMIT_EXCEEDED'
+          })
+        };
+      }
+
+      const cleanTranslated = decodeHTMLEntities(rawTranslation);
+      translatedChunks.push(cleanTranslated);
+
+      // Capture detected language from response if available
+      if (!detectedSourceLanguage && data?.responseData?.detectedLanguage) {
+        detectedSourceLanguage = data.responseData.detectedLanguage;
+      }
+
+      // Brief delay between chunks if multiple to avoid bursting the free API
+      if (textChunks.length > 1 && i < textChunks.length - 1) {
+        await new Promise(r => setTimeout(r, 120));
+      }
     }
 
-    // Process successful translation response
-    const translations = data?.data?.translations;
-    if (!translations || translations.length === 0) {
-      return {
-        statusCode: 502,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({
-          error: 'No translation was returned from Google Translation API.',
-          code: 'EMPTY_TRANSLATION_RESPONSE'
-        })
-      };
-    }
-
-    const firstResult = translations[0];
-    const rawTranslated = firstResult.translatedText || '';
-    const cleanTranslated = decodeHTMLEntities(rawTranslated);
-    const detectedSourceLanguage = firstResult.detectedSourceLanguage || cleanSourceLang || 'en';
+    // Merge translated chunks
+    const combinedTranslatedText = translatedChunks.join(' ');
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
       body: JSON.stringify({
         success: true,
-        translatedText: cleanTranslated,
-        detectedSourceLanguage: detectedSourceLanguage,
-        sourceLang: cleanSourceLang || 'auto',
-        targetLang: cleanTargetLang,
+        translatedText: combinedTranslatedText,
+        detectedSourceLanguage: detectedSourceLanguage || (cleanSource !== 'autodetect' ? cleanSource : 'en'),
+        sourceLang: cleanSource !== 'autodetect' ? cleanSource : 'auto',
+        targetLang: cleanTarget,
         characterCount: text.length
       })
     };
 
-  } catch (networkError) {
+  } catch (error) {
     return {
       statusCode: 502,
       headers: CORS_HEADERS,
       body: JSON.stringify({
-        error: 'Failed to communicate with Google Translation API. Please check your network connection.',
+        error: 'Failed to communicate with MyMemory Translation API. Please check your internet connection.',
         code: 'NETWORK_ERROR',
-        details: networkError.message || String(networkError)
+        details: error instanceof Error ? error.message : String(error)
       })
     };
   }

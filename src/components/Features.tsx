@@ -15,7 +15,7 @@ export const Features: React.FC = () => {
     {
       icon: <Zap className="w-6 h-6 text-amber-500" />,
       title: 'Fast Translation',
-      description: 'Experience blazing fast real-time translation powered by high-throughput Google Cloud Translation infrastructure.',
+      description: 'Experience blazing fast real-time translation powered by MyMemory neural translation infrastructure with zero fees or billing.',
       bg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200/60 dark:border-amber-800/60',
     },
     {

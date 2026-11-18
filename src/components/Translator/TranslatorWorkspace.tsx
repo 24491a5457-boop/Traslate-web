@@ -39,7 +39,7 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
 
   // State
   const [sourceLang, setSourceLang] = useState<Language>(AUTO_DETECT);
-  const [targetLang, setTargetLang] = useState<Language>(() => getLanguageByCode('es')); // default Spanish or English
+  const [targetLang, setTargetLang] = useState<Language>(() => getLanguageByCode('te')); // default Telugu
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [detectedLangCode, setDetectedLangCode] = useState<string | null>(null);
@@ -475,7 +475,7 @@ export const TranslatorWorkspace: React.FC<TranslatorWorkspaceProps> = ({
                       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-1/2"></div>
                       <div className="pt-4 flex items-center gap-2 text-xs text-brand-600 dark:text-brand-400 font-medium">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Translating via Google Cloud...</span>
+                        <span>Translating with MyMemory...</span>
                       </div>
                     </div>
                   ) : translatedText ? (

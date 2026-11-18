@@ -19,7 +19,7 @@ export const HowItWorks: React.FC = () => {
       number: '03',
       icon: <Cpu className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
       title: 'Neural Serverless API',
-      description: 'Our Netlify serverless function securely relays the request to Google Cloud Translation API without exposing secret keys.',
+      description: 'Our Netlify serverless function chunks long queries and proxies requests to MyMemory Translation API without requiring any paid API keys.',
     },
     {
       number: '04',

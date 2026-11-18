@@ -17,8 +17,8 @@ export const About: React.FC = () => {
               Bridging Global Conversations Through Secure AI
             </h2>
             <p className="mt-4 text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-              LinguaFlow was designed to deliver a modern, intuitive, and enterprise-grade translation workspace.
-              Whether translating documents, casual messaging, or learning a foreign tongue, LinguaFlow combines the power of Google Cloud's neural machine translation with a lightning-fast responsive interface.
+              LinguaFlow was designed to deliver a modern, intuitive, and high-performance translation workspace.
+              Whether translating documents, casual messaging, or learning a foreign tongue, LinguaFlow combines the power of MyMemory's machine translation engine with a lightning-fast responsive interface.
             </p>
             <p className="mt-3 text-base text-slate-600 dark:text-slate-300 leading-relaxed">
               Built with privacy and developer best practices at its core, LinguaFlow ensures your API credentials and user data remain protected through isolated serverless Netlify microservices.
@@ -57,7 +57,7 @@ export const About: React.FC = () => {
                     Netlify Serverless Functions
                   </h4>
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
-                    Translation requests route via <code className="text-brand-600 dark:text-brand-300 font-mono">/.netlify/functions/translate</code>. The secret Google Cloud Translation key is stored strictly on the server.
+                    Translation requests route securely via <code className="text-brand-600 dark:text-brand-300 font-mono">/.netlify/functions/translate</code>, automatically managing chunking and language pairs for MyMemory API.
                   </p>
                 </div>
               </div>

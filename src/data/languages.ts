@@ -9,12 +9,13 @@ export const AUTO_DETECT: Language = {
 
 export const POPULAR_LANGUAGES: Language[] = [
   { code: 'en', name: 'English', nativeName: 'English', speechCode: 'en-US', popular: true },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', speechCode: 'te-IN', popular: true },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', speechCode: 'hi-IN', popular: true },
   { code: 'es', name: 'Spanish', nativeName: 'Español', speechCode: 'es-ES', popular: true },
   { code: 'fr', name: 'French', nativeName: 'Français', speechCode: 'fr-FR', popular: true },
   { code: 'de', name: 'German', nativeName: 'Deutsch', speechCode: 'de-DE', popular: true },
   { code: 'zh', name: 'Chinese (Simplified)', nativeName: '简体中文', speechCode: 'zh-CN', popular: true },
   { code: 'ja', name: 'Japanese', nativeName: '日本語', speechCode: 'ja-JP', popular: true },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', speechCode: 'hi-IN', popular: true },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', speechCode: 'ar-SA', popular: true },
   { code: 'pt', name: 'Portuguese', nativeName: 'Português', speechCode: 'pt-BR', popular: true },
   { code: 'ru', name: 'Russian', nativeName: 'Русский', speechCode: 'ru-RU', popular: true },
@@ -104,7 +105,6 @@ export const ALL_LANGUAGES: Language[] = [
   { code: 'sv', name: 'Swedish', nativeName: 'Svenska', speechCode: 'sv-SE' },
   { code: 'tg', name: 'Tajik', nativeName: 'Тоҷикӣ' },
   { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', speechCode: 'ta-IN' },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', speechCode: 'te-IN' },
   { code: 'th', name: 'Thai', nativeName: 'ไทย', speechCode: 'th-TH' },
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', speechCode: 'tr-TR' },
   { code: 'uk', name: 'Ukrainian', nativeName: 'Українська', speechCode: 'uk-UA' },

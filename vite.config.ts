@@ -1,9 +1,9 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 // Local development plugin to emulate /.netlify/functions/translate during `npm run dev`
-function netlifyFunctionsDevPlugin(envApiKey: string | undefined) {
+function netlifyFunctionsDevPlugin() {
   return {
     name: 'netlify-functions-dev',
     configureServer(server: any) {
@@ -31,17 +31,8 @@ function netlifyFunctionsDevPlugin(envApiKey: string | undefined) {
           req.on('end', async () => {
             try {
               const bodyStr = Buffer.concat(chunks).toString('utf-8');
-              const body = JSON.parse(bodyStr || '{}');
 
-              // Delegate to serverless function handler
-              if (envApiKey && envApiKey !== 'undefined') {
-                process.env.GOOGLE_TRANSLATION_API_KEY = envApiKey;
-              } else if (!process.env.GOOGLE_TRANSLATION_API_KEY || process.env.GOOGLE_TRANSLATION_API_KEY === 'undefined') {
-                delete process.env.GOOGLE_TRANSLATION_API_KEY;
-              }
-              
-              // Load the netlify function
-              // eslint-disable-next-line @typescript-eslint/no-var-requires
+              // Dynamically import the netlify serverless function
               const translateHandler = (await import('./netlify/functions/translate.js' as any)).handler;
               
               const fakeEvent = {
@@ -76,14 +67,11 @@ function netlifyFunctionsDevPlugin(envApiKey: string | undefined) {
   };
 }
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const apiKey = env.GOOGLE_TRANSLATION_API_KEY || process.env.GOOGLE_TRANSLATION_API_KEY;
-
+export default defineConfig(() => {
   return {
     plugins: [
       react(),
-      netlifyFunctionsDevPlugin(apiKey)
+      netlifyFunctionsDevPlugin()
     ],
     server: {
       port: 5173,
@@ -91,4 +79,3 @@ export default defineConfig(({ mode }) => {
     }
   };
 });
-

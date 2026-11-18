@@ -13,7 +13,7 @@ export const Hero: React.FC = () => {
         {/* Top Feature Pill */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 border border-brand-200/80 dark:border-brand-800/80 shadow-sm text-brand-700 dark:text-brand-300 text-xs font-semibold mb-6 animate-fade-in">
           <Sparkles className="w-3.5 h-3.5 text-accent-500" />
-          <span>Next-Gen Neural Translation • Google Cloud Backend</span>
+          <span>Free Neural Translation • Powered by MyMemory Engine</span>
         </div>
 
         {/* Hero Title */}
