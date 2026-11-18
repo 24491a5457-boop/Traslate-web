@@ -34,8 +34,11 @@ function netlifyFunctionsDevPlugin(envApiKey: string | undefined) {
               const body = JSON.parse(bodyStr || '{}');
 
               // Delegate to serverless function handler
-              // We pass process.env with loaded envApiKey
-              process.env.GOOGLE_TRANSLATION_API_KEY = envApiKey || process.env.GOOGLE_TRANSLATION_API_KEY;
+              if (envApiKey && envApiKey !== 'undefined') {
+                process.env.GOOGLE_TRANSLATION_API_KEY = envApiKey;
+              } else if (!process.env.GOOGLE_TRANSLATION_API_KEY || process.env.GOOGLE_TRANSLATION_API_KEY === 'undefined') {
+                delete process.env.GOOGLE_TRANSLATION_API_KEY;
+              }
               
               // Load the netlify function
               // eslint-disable-next-line @typescript-eslint/no-var-requires

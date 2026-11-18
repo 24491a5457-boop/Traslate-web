@@ -51,7 +51,13 @@ export const handler = async function(event, context) {
 
   // Verify API Key presence
   const apiKey = process.env.GOOGLE_TRANSLATION_API_KEY;
-  if (!apiKey || apiKey.trim() === '' || apiKey === 'your_google_cloud_translation_api_key_here') {
+  if (
+    !apiKey ||
+    apiKey.trim() === '' ||
+    apiKey === 'undefined' ||
+    apiKey === 'null' ||
+    apiKey === 'your_google_cloud_translation_api_key_here'
+  ) {
     return {
       statusCode: 500,
       headers: CORS_HEADERS,
